@@ -139,12 +139,6 @@ router.post(
   memberController.likeChosenItem
 );
 
-// //Dislike item
-// router.post(
-//   "/disliked-item",
-//   memberController.memberRetrieve,
-//   memberController.dislikeChosenItem
-// )
 
 //Following
 router
@@ -251,11 +245,5 @@ router.post(
   viewController.viewedItem
 );
 
-//Socket Io Messages
-router.get(
-  "/socketIo/getAllMessages/",
-  memberController.memberRetrieve,
-  memberController.getAllMessages
-);
 
 module.exports = router;

@@ -1,7 +1,6 @@
 const router = require("express").Router();
 const memberController = require("../controllers/memberController");
 const productController = require("../controllers/productController");
-const notificationController = require("../controllers/notificationController");
 
 /***************************************
  *  BACKEND SERVER SIDE RENDERING      *
@@ -44,13 +43,6 @@ router
     memberController.memberRetrieveEjs,
     productController.createProductProcess
   );
-
-//Notification related APIs
-router.get(
-  "/notifications",
-  memberController.memberRetrieveEjs,
-  notificationController.getNotifications
-);
 
 //My Page Related APIs
 router.get(

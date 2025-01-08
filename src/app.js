@@ -6,13 +6,10 @@ const cookieParser = require("cookie-parser");
 const router_bssr = require("./routers/router_bssr");
 const router_bssp = require("./routers/router_bssp");
 const jwt = require("jsonwebtoken");
-const NotificationModel = require("./schema/notificationSchema");
-const memberSchema = require("./schema/memberSchema");
-const messageSchema = require("./schema/messageSchema");
-const { shapeMongooseObjectId } = require("./libs/convert");
-const { MORGAN_FOMAT } = require("./libs/config");
+const { MORGAN_FOMAT, VISIBLE_MSG } = require("./libs/config");
 const cors = require("cors");
 const express_session = require("express-session");
+const path = require("path");
 const MongoDb_store = require("connect-mongodb-session")(express_session);
 
 const store = new MongoDb_store({
@@ -23,11 +20,11 @@ const store = new MongoDb_store({
 //middlewares
 // app.use(morgan("tiny"));
 app.use(express.static("./public"));
-app.use("/uploads", express.static("./uploads"));
+app.use("/uploads", express.static(path.join(__dirname, "./uploads")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(morgan(MORGAN_FOMAT))
+app.use(morgan(MORGAN_FOMAT));
 
 //sessions
 app.use(
@@ -51,7 +48,7 @@ app.use(
 );
 
 //view engine
-app.set("./views", "./views");
+app.set("views", path.join(__dirname, "./views"));
 app.set("view engine", "ejs");
 
 //router
@@ -65,64 +62,71 @@ const io = require("socket.io")(server, {
   transport: ["websocket", "xhr-polling"],
 });
 //SOCKET IO
-const people = {};
-let onlineUser = 0;
+const socketClients = new Map();
+const clinetsMessages = [];
+let onlineUsers = 0;
+
 io.on("connection", (socket) => {
-  onlineUser++;
+  onlineUsers++;
+
   const token = socket.handshake.headers?.cookie
     ?.split("; ")
     ?.find((cookie) => cookie.startsWith("access_token="))
     ?.split("=")[1];
+
   if (token) {
     const member = jwt.verify(token, process.env.SECRET_TOKEN);
-    console.log("User connected::", member.mb_nick);
-    people[member.mb_nick] = socket;
-    socket.clientId = member.mb_nick;
-    io.emit("onlineUsers", { onlinePeople: Object.keys(people) });
+    console.log(`=== SOCKET CONNECTION & ${member.memberNick} ===`);
+    socketClients.set(socket, member);
+    const onlineMembersPayload = {
+      event: "getMembers",
+      membersData: Array.from(socketClients.values()),
+    };
+    const newClientPayload = {
+      event: "info",
+      totalClients: onlineUsers,
+      memberData: member,
+      action: "joined",
+    };
+
+    if (clinetsMessages.length > VISIBLE_MSG)
+      clinetsMessages.split(0, clinetsMessages.length - VISIBLE_MSG);
+    const getMessagesPayload = {
+      event: "getMessages",
+      messages: clinetsMessages,
+    };
+    socket.emit("getMessages", JSON.stringify(getMessagesPayload));
+    io.emit("onlineUsers", {
+      onlinePeople: JSON.stringify(onlineMembersPayload),
+    });
+    io.emit("info", JSON.stringify(newClientPayload));
   }
 
-  socket.on("new_msg", async (data) => {
-    const { targetClientId, message, sender_image, reply_msg } = data;
-    console.log("message written:", message);
-    const notification = new NotificationModel({
-      notify_sender: member.mb_nick,
-      notify_sender_image: sender_image ?? "/icons/default_user.svg",
-      notify_reciever: targetClientId,
-      notify_context: message,
-      notify_reply: reply_msg,
-    });
-    if (targetClientId) {
-      if (people[targetClientId]) {
-        people[targetClientId].emit("create_msg", {
-          senderClientId: member.mb_nick,
-          message,
-        });
-      }
-      await memberSchema.findOneAndUpdate(
-        { mb_nick: targetClientId },
-        { $inc: { mb_new_messages: 1 } }
-      );
-      await notification.save();
-    } else {
-      socket.emit("errorMessage", { text: "Target client not found." });
-    }
+  socket.on("message", async (data) => {
+    const { text } = JSON.parse(data);
+    const messagePayload = {
+      event: "message",
+      text,
+      memberData: socketClients.get(socket),
+    };
+    clinetsMessages.push(messagePayload);
+
+    const getMessagesPayload = {
+      event: "getMessages",
+      messages: clinetsMessages,
+    };
+    io.emit("getMessages", JSON.stringify(getMessagesPayload));
   });
 
-  io.emit("totalUser", { totalUser: onlineUser });
-  socket.on("createMsgApp", async (data) => {
-    const mb_id = shapeMongooseObjectId(data.mb_id);
-    const msg = new messageSchema({
-      mb_id,
-      mb_img: data.mb_img,
-      msg_sender: data.msg_sender,
-      msg_text: data.msg_text,
-    });
-    await msg.save();
-    io.emit("newMsgApp", data);
-  });
   socket.on("disconnect", () => {
-    onlineUser--;
-    socket.broadcast.emit("totalUser", { totalUser: onlineUser })
+    onlineUsers--;
+    const infoMessagePayload = {
+      event: "info",
+      onlineUsers,
+      member: socketClients.get(socket),
+      action: "left",
+    };
+    socket.broadcast.emit("info", JSON.stringify(infoMessagePayload));
   });
 });
 

@@ -5,9 +5,9 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon server.js",
-    "start": "node server.js",
-    "start:prod":"node server.js && NODE_ENV=production"
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "start:prod":"node src/server.js"
   },
   "dependencies": {
     "assert": "^2.0.0",

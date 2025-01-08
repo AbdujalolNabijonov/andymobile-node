@@ -1,0 +1,1 @@
+exports.MORGAN_FOMAT = ":method :url :response-time ms [:status] \n"

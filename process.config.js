@@ -4,7 +4,7 @@ module.exports = {
       name: "ANDYMOBILES",
       watch: true,
       cwd: "./",
-      script: "./server.js",
+      script: "./src/server.js",
       env_production: {
         NODE_ENV: "production",
       },

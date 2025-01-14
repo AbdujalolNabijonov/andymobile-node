@@ -52,7 +52,6 @@ const memberSchema = new mongoose.Schema(
     mb_email: {
       type: String,
       default: "",
-      unique:true
     },
     mb_likes: {
       type: Number,

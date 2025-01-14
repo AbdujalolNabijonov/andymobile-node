@@ -20,7 +20,7 @@ mongoose
     server.listen(
       PORT,
       console.info(
-        color.bgCyan(`Backend server is listening on ${PORT} port,`),
+        color.bgCyan(`Backend server is running on ${process.env.NODE_ENV}`),
         color.bgMagenta(`http://localhost:${PORT}`)
       )
     );

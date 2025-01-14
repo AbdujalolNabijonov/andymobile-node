@@ -219,7 +219,7 @@
                                     style="top:0; right: 0;"><i class="fa-solid fa-upload"></i></button>
                             </div>
                         </div>
-                        <p class="text-danger">***Upload Only PNG,JPG,JPEG formatted files</p>
+                        <p class="text-danger">***Upload Only WEBPG formatted files</p>
                     </div>
 
                     <a href="#product_name" class="btn btn-outline-danger align-self-start"
@@ -465,7 +465,7 @@
             function previewFileHandler(input, order) {
                 const className = input.className;
                 const file = $(`.${className}`)[0].files[0];
-                const valid_types = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
+                const valid_types = ["image/webp"];
                 if (!valid_types.includes(file.type)) {
                     alert("Please, Insert Valid formatted file");
                 } else {

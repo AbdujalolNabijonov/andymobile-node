@@ -51,105 +51,56 @@ class Product {
 
   async getTargetProductsData(member, data) {
     try {
-      //Initialization Filter
+      const { page, limit, order, direction, search } = data;
       let mb_id;
-      if (member?._id) {
-        mb_id = shapeMongooseObjectId(member._id);
-      }
+      if (member?._id) mb_id = shapeMongooseObjectId(member._id);
+      console.log(data)
+      const sort = { [order ?? "createdAt"]: direction ?? -1 };
       const match = { product_status: "PROCESS" };
-      if (data.company_id) {
-        match["company_id"] = shapeMongooseObjectId(data.company_id);
-      }
       const pipelines = [{ $match: match }];
+      if (search.company_id)
+        match["company_id"] = shapeMongooseObjectId(search.company_id);
+      if (search.text)
+        match["product_name"] = new RegExp("^" + search.text, "i");
+      if (search.color) match["product_color"] = search.color;
+      if (search.memory) match["product_memory"] = search.memory;
+      if (search.priceRange) {
+        match["product_price"] = {
+          $gte: Number(search.priceRange.start),
+          $lte: Number(search.priceRange.end),
+        };
+      }
+      if (search.contractRange) {
+        match["product_contract"] = {
+          $gte: Number(search.contractRange.start),
+          $lte: Number(search.contractRange.end),
+        };
+      }
       pipelines.push(
         { $group: { _id: "$product_name", doc: { $first: "$$ROOT" } } },
         { $replaceRoot: { newRoot: "$doc" } }
       );
-      // Sorting
-      const sort = {};
-      switch (data.order) {
-        case "lowToHigh":
-          sort["product_price"] = 1;
-          break;
-        case "highToLow":
-          sort["product_price"] = -1;
-          break;
-        case "newToOld":
-          sort["createdAt"] = -1;
-          break;
-        case "oldToNew":
-          sort["createdAt"] = 1;
-          break;
-        case "like" || "popular":
-          sort["product_likes"] = -1;
-          break;
-        case "view":
-          sort["product_views"] = -1;
-          break;
-        case "new":
-          match["product_new_released"] = "Y";
-          break;
-        case "sale":
-          match["product_discount"] = { $gte: 1 };
-          break;
-        default:
-          break;
-      }
-      if (Object.keys(sort).length > 0) {
-        pipelines.push({ $sort: sort });
-      }
-
-      //Searching Item
-      if (data.search) {
-        match["product_name"] = new RegExp("^" + data.search, "i");
-      }
-
-      //Left Filter
-      if (data.minPrice > 0 && data.maxPrice > 0) {
-        match["product_price"] = {
-          $gte: data.minPrice * 1,
-          $lte: data.maxPrice * 1,
-        };
-      }
-
-      if (data.color) {
-        match["product_color"] = data.color;
-      }
-
-      if (data.contractMonth[0]) {
-        const monthList = data.contractMonth.split(",");
-        match["product_contract"] = {
-          $gte: monthList[0] * 1,
-          $lte: monthList[1] * 1,
-        };
-      }
-      if (data.storage) {
-        match["product_memory"] = data.storage * 1;
-      }
-
-      // Add $lookup stage to fetch related colors
-      if (data.homeProduct == "Y") {
-        pipelines.push(
-          {
-            $lookup: {
-              from: "members",
-              localField: "company_id",
-              foreignField: "_id",
-              as: "owner_data",
-            },
-          },
-          { $unwind: "$owner_data" }
-        );
-      } else if (!data.color) {
-        pipelines.push({
+      pipelines.push({ $sort: sort });
+      pipelines.push(
+        {
           $lookup: {
-            from: "products",
-            localField: "product_name",
-            foreignField: "product_name",
-            as: "product_related_colors",
+            from: "members",
+            localField: "company_id",
+            foreignField: "_id",
+            as: "owner_data",
           },
-        });
-      }
+        },
+        { $unwind: "$owner_data" }
+      );
+
+      pipelines.push({
+        $lookup: {
+          from: "products",
+          localField: "product_name",
+          foreignField: "product_name",
+          as: "product_related_colors",
+        },
+      });
 
       // Project only the necessary fields from the related colors
       pipelines.push({
@@ -186,12 +137,10 @@ class Product {
           me_liked: 1,
         },
       });
-      if (data.page) {
-        pipelines.push({ $skip: (data.page * 1 - 1) * data.limit });
-      }
-      pipelines.push({ $limit: data.limit * 1 });
-      pipelines.push(lookup_auth_member_liked(mb_id));
 
+      if (page) pipelines.push({ $skip: (page - 1) * limit });
+      pipelines.push({ $limit: limit });
+      pipelines.push(lookup_auth_member_liked(mb_id));
       const result = await this.productModel.aggregate(pipelines).exec();
       return result;
     } catch (err) {

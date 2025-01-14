@@ -143,7 +143,7 @@ memberController.register = async (req, res) => {
     res.render("register");
   } catch (err) {
     console.log(`ERROR: cont/register, ${err.message}`);
-    res.json({ state: "fail", message: err.message });
+    res.send("<script>window.location.replace('/admin/register')</script>");
   }
 };
 
@@ -163,7 +163,12 @@ memberController.signup = async (req, res) => {
     res.redirect("/admin");
   } catch (err) {
     console.log(`ERROR: cont/signup, ${err.message}`);
-    res.json({ state: "fail", message: err.message });
+    res.send(`
+      <script>
+          alert(${JSON.stringify(err.message)});
+          window.location.replace("/admin/register");
+      </script>
+  `);
   }
 };
 
@@ -182,7 +187,13 @@ memberController.login = async (req, res) => {
     res.redirect("/admin");
   } catch (err) {
     console.log(`ERROR: cont/login, ${err.message}`);
-    res.json({ state: "fail", message: err.message });
+    res.send(`
+      <script>
+          alert(${JSON.stringify(err.message)});
+          window.location.replace("/admin/register");
+      </script>
+  `);
+  
   }
 };
 

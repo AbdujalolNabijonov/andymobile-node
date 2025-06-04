@@ -4,7 +4,7 @@ services:
     restart:  always
     image: node:20.10.0
     ports:
-      - 4001:4001
+      - 4002:4002
     volumes:
       - .:/usr/src/app
     working_dir:  /usr/src/app

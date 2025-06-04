@@ -249,7 +249,9 @@ memberController.logout = async (req, res) => {
 memberController.logoutProcess = async (req, res) => {
   try {
     console.log("GET: cont/logoutProcess");
-    res.cookie("access_token", null, { maxAge: 0, httpOnly: false });
+    
+    res.cookie("access_token", null, { maxAge: 0, httpOnly: false })
+    res.status(HttpCode.OK).json({ logout: true })
   } catch (err) {
     console.log(`ERROR: cont/logoutProcess, ${err.message}`);
     res.json({ state: "fail", message: err });
